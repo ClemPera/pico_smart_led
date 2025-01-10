@@ -1,9 +1,3 @@
-class LEDs:
-    def __init__(self, brightness = 10,rgb = (255,255,255),status = "OFF"):
-        self.brightness = brightness
-        self.rgb = rgb
-        self.status = status
-        
 import time
 import neopixel
 from machine import Pin, WDT
@@ -12,8 +6,13 @@ import network
 from umqttsimple import MQTTClient
 led_count = 150 # number of LEDs in ring light
 PIN_NUM = 0 # pin connected to ring light
-
 neo = neopixel.NeoPixel(Pin(0), 150)
+
+class LEDs:
+    def __init__(self, brightness = 10,rgb = (255,255,255),status = "OFF"):
+        self.brightness = brightness
+        self.rgb = rgb
+        self.status = status
 
 leds = LEDs()
 
@@ -27,7 +26,10 @@ def reconnect():
     print('Failed to connect to MQTT Broker. Reconnecting...')
     wdt.feed()
     
-    client.disconnect()
+    try:
+        client.disconnect()
+    except:
+        pass
     client_setup()
 
 def client_setup():
@@ -41,7 +43,10 @@ def client_setup():
         client.subscribe("light/switch".encode('utf-8'))
     except OSError as e:
         print("error connecting/subscribing to mqtt")
-        reconnect()
+        if client is None:
+            client_setup()
+        else:
+            reconnect()
 
 # This code is executed once a new message is published
 def new_message_callback(topic, msg):
@@ -132,10 +137,10 @@ message_interval = 5
 counter = 0
 
 #hardware watchdog if the program crash, it restart completly
-wdt=WDT(timeout=8388)
+wdt=WDT(timeout=8000)
 wdt.feed()
 
-keep_alive=60 #set the seconds between 2 keep alive messages
+keep_alive=2 #set the seconds between 2 keep alive messages
 client = None
 client_setup()
 
@@ -145,7 +150,9 @@ last_message=time.time()
 # Main loop
 while True:
     try:
+        print("checking msg...")
         client.check_msg()
+        time.sleep(0.1)
     except OSError as e:
         print("error client.check_msg() : ", e)
         reconnect()
